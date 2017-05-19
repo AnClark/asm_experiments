@@ -1,4 +1,5 @@
 ; Task 3: Write a simple scholar grade querier.
+; TODO: THIS PROGRAM MAY BEHAVIOR UNEXPECTEDLY ON OTHER MACHINES DUE TO UNSUITABLE ENDING FLAG JUDGMENT OF BUF!
 
 STACK SEGMENT USE16 STACK
 	DB 512 DUP(0)
@@ -34,6 +35,8 @@ DATA SEGMENT USE16
 			DB 11 DUP(0)
 	STUDENT_FOUND DB 0		; Mark if we found the student we want. Value: Found=1, Not found=0
 	POIN DW ?
+	BUF_END DW ?				; Ending address of BUF
+	
 DATA ENDS
 
 
@@ -85,15 +88,22 @@ PROMPT:
 	JE QUIT
 
 	
-	; ============================== FUNCTION 2: Find student ==============================
-	; METHOD: Check character one by one, and analyze how many chars are same.
-	
+	; ==================== FUNCTION 3: Calculate all students' average ====================
 	; --- DEBUG: This is a mark for locating code in TD.
 	XOR DX, DX
 	XOR DX, DX
-	XOR DX, DX
+	XOR DX, DX	
+	
+	CALL CALCULATE_AVERAGE
+	
+	
+	; ============================== FUNCTION 2: Find student ==============================
+	; METHOD: Check character one by one, and analyze how many chars are same.
 	
 	; Get ready
+	MOV BUF_END, OFFSET BUF
+	ADD BUF_END, 14*30
+	
 	MOV POIN, OFFSET BUF
 
 ; --------------------------------------------------------------------------	
@@ -140,12 +150,18 @@ TRY_NEXT_STUDENT:
 	ADD POIN, 14				; Cursor to the next student
 	
 	; LOOPBACK JUDGEMENT
-	CMP POIN, 14*30				; Check if we arrived the end of BUF	
+	CMP POIN, 14*30				; Check if we arrived the end of BUF
+	;LEA DI, BUF_END
+	;CMP BYTE PTR POIN, BYTE PTR [DI]
+	
 	JL LOOP_FIND_STUDENT
 ; --------------------------------------------------------------------------	
 	
 	; FINAL CHECK: The worth situation is that we traversed all those students, but still not found.
 	CMP POIN, 14*30
+	;LEA DI, BUF_END
+	;CMP BYTE PTR POIN, BYTE PTR [DI]
+	
 	JGE NOT_FOUND
 	JMP FOUND
 
@@ -161,8 +177,6 @@ FOUND:
 	INT 21H
 	JMP PROMPT			; Return to prompt
 	
-	
-	; ==================== FUNCTION 3: Calculate all students' average ====================
 
 	
 	
@@ -182,7 +196,68 @@ CALCULATE_AVERAGE PROC NEAR
 	; FORMULA:
 	;		- Source: (A*2+B+C/2)/3.5
 	;		- Exported: (4*A + 2*B + C) / 7
+	; REGISTERS:
+	; 		- AX: Occupied by MUL & IMUL
+	;		- BX: Contains number to multiply/divide with
+	;		- CX: Current result of calculation of current student
+	;		
+	; STORAGE:
+	;		- POIN
+	
+	; Get ready
+	; Get the heading address FOR MARKS of BUF
+	LEA SI, BUF
+	ADD SI, 10
+	
+LOOP_FIND_STUDENT_MARKS:
+	; Clear registers
+	XOR AX, AX
+	XOR BX, BX
+	XOR CX, CX
+	XOR DX, DX
+	
+	; NOTICE!
+	; How much indirect addr picker picks are depended on the first argument!
+	; 	Here, each mark takes only 1 Byte. If we use AX instead of AL when getting values of A, B, C,
+	; 		2 Bytes of data will be read. The only consequence is that we get a totally wrong result.
+	
+	; Read, calculate mark A, then accumulate
+	MOV AL, [SI]	; Get A
+	MOV BX, 4		; Set multiplyer 4
+	MUL BX			; 4*A
+	ADD CX, AX		; Accumulate
+	
+	; Read and calculate mark B, then accumulate
+	XOR AH, AH		; Clear AH to prevent pollution
+	MOV AL, [SI]+1	; Get B
+	MOV BX, 2		; Set multiplyer 2
+	MUL BX			; 2*B
+	ADD CX, AX		; Accumulate
+	
+	; Read and calculate mark C, then accumulate
+	XOR AH, AH		; Clear AH to prevent pollution
+	MOV AL, [SI]+2	; Get C
+	ADD CX, AX		; Accumulate
+	
+	; Now let's give it a final division!
+	MOV AX, CX		; AX stores the number for divide
+	MOV BX, 7		; Set divider 7
+	DIV BX			; Divide 7
+	MOV CX, AX		; Get result back
+	
+	; Everything is done. Put result to where it should be.
+	MOV [SI]+3, CL
+	
+	; Cursor to the next student
+	ADD SI, 14
+	
+	; LOOPBACK JUDGEMENT
+	CMP SI, 14*30
+	JL LOOP_FIND_STUDENT_MARKS
+
+	RET
 CALCULATE_AVERAGE ENDP
+	
 	
 PRINT_CRLF PROC NEAR
 	; Screen output: Go to a new line
