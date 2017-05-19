@@ -1,5 +1,4 @@
 ; Task 3: Write a simple scholar grade querier.
-; TODO: THIS PROGRAM MAY BEHAVIOR UNEXPECTEDLY ON OTHER MACHINES DUE TO UNSUITABLE ENDING FLAG JUDGMENT OF BUF!
 
 STACK SEGMENT USE16 STACK
 	DB 512 DUP(0)
@@ -26,7 +25,8 @@ DATA SEGMENT USE16
 		
 		DB 'AkuraRyuu',0
 		DB 95, 95, 100, ?			; AVE = 95 (A)
-
+	
+	BUF_END DB 0			; BUF's ending flag. Essential for compatibility!
 	
 	; ======== Screen Info ========
 	STR_TITLE DB '---------------- GRADE QUERY ---------------- $'
@@ -43,7 +43,6 @@ DATA SEGMENT USE16
 			DB 11 DUP(0)
 	STUDENT_FOUND DB 0		; Mark if we found the student we want. Value: Found=1, Not found=0
 	POIN DW ?
-	BUF_END DW ?				; Ending address of BUF
 	
 DATA ENDS
 
@@ -51,10 +50,12 @@ DATA ENDS
 CODE SEGMENT USE16
 	ASSUME CS:CODE, DS:DATA, SS:STACK
 START:
-	; INITIALIZE
+	; ================ INITIALIZE ================
+	; Initialize data segment
 	MOV AX, DATA
 	MOV DS, AX
 	
+	; Show program title
 	LEA DX, STR_TITLE
 	MOV AH, 9
 	INT 21H
@@ -104,10 +105,6 @@ PROMPT:
 	; ============================== FUNCTION 2: Find student ==============================
 	; METHOD: Check character one by one, and analyze how many chars are same.
 	
-	; Get ready
-	MOV BUF_END, OFFSET BUF
-	ADD BUF_END, 14*30
-	
 	MOV POIN, OFFSET BUF
 
 ; --------------------------------------------------------------------------	
@@ -154,17 +151,15 @@ TRY_NEXT_STUDENT:
 	ADD POIN, 14				; Cursor to the next student
 	
 	; LOOPBACK JUDGEMENT
-	CMP POIN, 14*30				; Check if we arrived the end of BUF
-	;LEA DI, BUF_END
-	;CMP BYTE PTR POIN, BYTE PTR [DI]
+	LEA DI, BUF_END
+	CMP POIN, DI				; Check if we arrived the end of BUF
 	
 	JL LOOP_FIND_STUDENT
 ; --------------------------------------------------------------------------	
 	
 	; FINAL CHECK: The worth situation is that we traversed all those students, but still not found.
-	CMP POIN, 14*30
-	;LEA DI, BUF_END
-	;CMP BYTE PTR POIN, BYTE PTR [DI]
+	LEA DI, BUF_END
+	CMP POIN, DI
 	
 	JGE NOT_FOUND
 	JMP FOUND
@@ -179,7 +174,8 @@ FOUND:
 	LEA DX, STR_FOUND
 	MOV AH, 9
 	INT 21H
-	;JMP PROMPT			; Return to prompt
+	
+	; When found, go to the next stage - getting grade!
 	JMP GET_GRADE
 	
 
@@ -315,7 +311,8 @@ LOOP_FIND_STUDENT_MARKS:
 	ADD SI, 14
 	
 	; LOOPBACK JUDGEMENT
-	CMP SI, 14*30
+	LEA DI, BUF_END
+	CMP SI, DI
 	JL LOOP_FIND_STUDENT_MARKS
 
 	RET
