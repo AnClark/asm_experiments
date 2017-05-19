@@ -10,23 +10,31 @@ DATA SEGMENT USE16
 	; ======== Student Data ========
 	N EQU 30
 	BUF DB 'Satoshi',0,0,0		
-		DB 100, 85, 80, ?
+		DB 100, 85, 80, ?			; AVE = 92 (A)
 		DB 'Kasumi',0,0,0,0
-		DB 80, 100, 70, ?
+		DB 80, 100, 70, ?			; AVE = 84 (B)
+		DB 'AsukaRyo',0,0
+		DB 77, 83, 60, ?			; AVE = 76 (C)
+		DB 'Kagome',0,0,0,0
+		DB 62, 87, 70, ?			; AVE = 70 (C)
+		DB 'EdSheeran',0
+		DB 60, 80, 70, ?			; AVE = 67 (D)
+		DB 'NoisyGuy',0,0
+		DB 55, 62, 33, ?			; AVE = 53 (F)
 		
-		DB N-3 DUP('TEMP_VALUE', 60, 60, 60, ?)
+		DB N-7 DUP('TEMP_VALUE', 60, 60, 60, ?)		; AVE = 60 (D)
 		
 		DB 'AkuraRyuu',0
-		DB 95, 95, 100, ?
+		DB 95, 95, 100, ?			; AVE = 95 (A)
 
 	
 	; ======== Screen Info ========
-	STR_TITLE DB '-------- GRADE QUERIER --------', 0DH, 0AH, '$'
+	STR_TITLE DB '---------------- GRADE QUERY ---------------- $'
 	STR_INPUT_NAME DB 'Please input student name: $'
 	STR_NOT_FOUND DB 0DH, 0AH, 'Student not found! $'
 	STR_FOUND DB 0DH, 0AH, 'Student FOUND! $'
 	STR_QUIT DB 0DH, 0AH, 0DH, 0AH, 'Quitting program... $'
-	STR_GRADES DB 'A$','B$','C$','D$','E$','F$'
+	STR_PRINT_GRADE DB 0DH, 0AH, 'Grade is:   $'
 	CRLF DB 0DH, 0AH, '$'
 	
 	; ======== Vars for query ========
@@ -52,6 +60,7 @@ START:
 	INT 21H
 
 PROMPT:
+	CALL PRINT_CRLF
 	CALL PRINT_CRLF
 
 	; Prompt for user input
@@ -88,12 +97,7 @@ PROMPT:
 	JE QUIT
 
 	
-	; ==================== FUNCTION 3: Calculate all students' average ====================
-	; --- DEBUG: This is a mark for locating code in TD.
-	XOR DX, DX
-	XOR DX, DX
-	XOR DX, DX	
-	
+	; ==================== FUNCTION 3: Calculate all students' average ====================	
 	CALL CALCULATE_AVERAGE
 	
 	
@@ -175,10 +179,69 @@ FOUND:
 	LEA DX, STR_FOUND
 	MOV AH, 9
 	INT 21H
-	JMP PROMPT			; Return to prompt
+	;JMP PROMPT			; Return to prompt
+	JMP GET_GRADE
 	
 
+	; ============================== FUNCTION 4: Get grade ==============================
+GET_GRADE:
+		; --- DEBUG: This is a mark for locating code in TD.
+	XOR DX, DX
+	XOR DX, DX
+	XOR DX, DX	
 	
+	; Locate to the chosen student's average
+	LEA SI, BUF			; Get BUF's base address
+	ADD SI, POIN		; Forward to the target student
+	ADD SI, 13			; Forward to the student's average
+	
+	; Print screen tip
+	LEA DX, STR_PRINT_GRADE
+	MOV AH, 9
+	INT 21H
+	
+	; Now analyse and give a result
+	CMP BYTE PTR [SI], 90
+	JGE LE_90
+	
+	CMP BYTE PTR [SI], 80
+	JGE LE_80
+	
+	CMP BYTE PTR [SI], 70
+	JGE LE_70
+	
+	CMP BYTE PTR [SI], 60
+	JGE LE_60
+	JNGE NLE_60
+	
+LE_90:
+	MOV DX, 'A'
+	MOV AH, 2
+	INT 21H
+	JMP END_GET_GRADE
+LE_80:
+	MOV DX, 'B'
+	MOV AH, 2
+	INT 21H
+	JMP END_GET_GRADE
+LE_70:
+	MOV DX, 'C'
+	MOV AH, 2
+	INT 21H
+	JMP END_GET_GRADE
+LE_60:
+	MOV DX, 'D'
+	MOV AH, 2
+	INT 21H
+	JMP END_GET_GRADE
+NLE_60:
+	MOV DX, 'F'
+	MOV AH, 2
+	INT 21H
+	JMP END_GET_GRADE
+	
+END_GET_GRADE:
+	JMP PROMPT
 	
 QUIT:	
 	; Print quit tip
