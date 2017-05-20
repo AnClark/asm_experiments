@@ -6,7 +6,7 @@ STACK ENDS
 
 
 DATA SEGMENT USE16
-	; ======== Student Data ========
+	; ================ Student Data ================
 	N EQU 30
 	BUF DB 'Satoshi',0,0,0		
 		DB 100, 85, 80, ?			; AVE = 92 (A)
@@ -26,18 +26,20 @@ DATA SEGMENT USE16
 		DB 'AkuraRyuu',0
 		DB 95, 95, 100, ?			; AVE = 95 (A)
 	
-	BUF_END DB 0			; BUF's ending flag. Essential for compatibility!
+	; BUF's ending flag, defined in order to mark the end of BUF CORRECTLY. 
+	; NOTICE: This is essential for compatibility among different machines!
+	BUF_END DB 0			
 	
-	; ======== Screen Info ========
+	; ================ Screen Info ================
 	STR_TITLE DB '---------------- GRADE QUERY ---------------- $'
 	STR_INPUT_NAME DB 'Please input student name: $'
 	STR_NOT_FOUND DB 0DH, 0AH, 'Student not found! $'
 	STR_FOUND DB 0DH, 0AH, 'Student FOUND! $'
-	STR_QUIT DB 0DH, 0AH, 0DH, 0AH, 'Quitting program... $'
+	STR_QUIT DB 0DH, 0AH, 0DH, 0AH, 'Quitting program...', 0DH, 0AH, '$'
 	STR_PRINT_GRADE DB 0DH, 0AH, 'Grade is:   $'
 	CRLF DB 0DH, 0AH, '$'
 	
-	; ======== Vars for query ========
+	; ================ Vars for query ================
 	IN_NAME	DB 11
 			DB ?
 			DB 11 DUP(0)
@@ -54,6 +56,7 @@ START:
 	; Initialize data segment
 	MOV AX, DATA
 	MOV DS, AX
+	;=============================================
 	
 	; Show program title
 	LEA DX, STR_TITLE
@@ -83,7 +86,7 @@ PROMPT:
 	
 	; ============================== FUNCTION 1: Check user input ==============================
 	
-	; First, get value of your input
+	; First: get value of your input
 	LEA SI, IN_NAME+2
 	MOV BL, [SI]
 	
@@ -97,6 +100,8 @@ PROMPT:
 	CMP BL, 'q'
 	JE QUIT
 
+	; SITUATION 3: Default --- input a valid student name
+	; Just continue!
 	
 	; ==================== FUNCTION 3: Calculate all students' average ====================	
 	CALL CALCULATE_AVERAGE
@@ -105,26 +110,28 @@ PROMPT:
 	; ============================== FUNCTION 2: Find student ==============================
 	; METHOD: Check character one by one, and analyze how many chars are same.
 	
+	; Get heading addr of BUF.
+	; In this segment, POIN points to current position. It will stop on target (if found) or ending (if not found).
 	MOV POIN, OFFSET BUF
 
 ; --------------------------------------------------------------------------	
 LOOP_FIND_STUDENT:
-
-	MOV SI, POIN
-	LEA DI, IN_NAME+2
+	; Set cursor to strings we compare
+	MOV SI, POIN			; Student name in BUF
+	LEA DI, IN_NAME+2		; Our input
 	
 	; Use DL to store the number of same chars, DH stores the length of STR1.
 	XOR DX, DX		; Clear DX first
-	
 	XOR BX, BX		; BX plays role of buffer
 
-LOOP_CHECK_SAME_STUDENT_NAME:	
-	; Count how many characters are same.
-	MOV BL, [SI]
-	MOV BH, [DI]
+LOOP_CHECK_SAME_STUDENT_NAME:	; Count how many characters are same.
+	; Get current characters
+	MOV BL, [SI]	; Char in student name in BUF
+	MOV BH, [DI]	; Char in our input
 	INC DH			; Calculate length of STR1
 	
-	CMP BH, BL
+	; Compare if same
+	CMP BH, BL		
 	JE SAME_CHAR
 	JMP NOT_SAME_CHAR
 	
@@ -136,7 +143,7 @@ NOT_SAME_CHAR:
 	INC SI
 	INC DI
 	
-	; LOOPBACK JUDGEMENT
+	; --- LOOPBACK JUDGEMENT
 	CMP BYTE PTR [SI], 0		; Check if we arrived the end flag
 	JNE LOOP_CHECK_SAME_STUDENT_NAME
 	
@@ -150,7 +157,7 @@ TRY_NEXT_STUDENT:
 	; If not found this time: Try next student
 	ADD POIN, 14				; Cursor to the next student
 	
-	; LOOPBACK JUDGEMENT
+	; --- LOOPBACK JUDGEMENT
 	LEA DI, BUF_END
 	CMP POIN, DI				; Check if we arrived the end of BUF
 	
@@ -310,7 +317,7 @@ LOOP_FIND_STUDENT_MARKS:
 	; Cursor to the next student
 	ADD SI, 14
 	
-	; LOOPBACK JUDGEMENT
+	; --- LOOPBACK JUDGEMENT
 	LEA DI, BUF_END
 	CMP SI, DI
 	JL LOOP_FIND_STUDENT_MARKS
@@ -320,19 +327,21 @@ CALCULATE_AVERAGE ENDP
 	
 	
 PRINT_CRLF PROC NEAR
+	; Dump register
+	PUSH AX
+	PUSH DX
+	
 	; Screen output: Go to a new line
 	LEA DX, CRLF
 	MOV AH, 9
 	INT 21H
+	
+	; Restore register
+	POP DX
+	POP AX
 	RET
 PRINT_CRLF ENDP
 	
-DEBUG PROC NEAR
-	LEA DX, STR_TITLE
-	MOV AH, 9
-	INT 21H
-	RET
-DEBUG ENDP
 	
 CODE ENDS
 	END START
