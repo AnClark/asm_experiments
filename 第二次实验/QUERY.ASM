@@ -1,5 +1,22 @@
 ; Task 3: Write a simple scholar grade querier.
 
+; --------------- MACRO DEFINITIONS ---------------
+; Screen output: print screen info
+PRINT MACRO A
+	LEA DX, A
+	MOV AH, 9
+	INT 21H
+ENDM
+
+; Screen output: Go to a new line
+PRINT_CRLF MACRO
+	LEA DX, CRLF
+	MOV AH, 9
+	INT 21H
+ENDM
+
+
+
 STACK SEGMENT USE16 STACK
 	DB 512 DUP(0)
 STACK ENDS
@@ -48,7 +65,6 @@ DATA SEGMENT USE16
 	
 DATA ENDS
 
-
 CODE SEGMENT USE16
 	ASSUME CS:CODE, DS:DATA, SS:STACK
 START:
@@ -59,18 +75,14 @@ START:
 	;=============================================
 	
 	; Show program title
-	LEA DX, STR_TITLE
-	MOV AH, 9
-	INT 21H
+	PRINT STR_TITLE
 
 PROMPT:
-	CALL PRINT_CRLF
-	CALL PRINT_CRLF
+	PRINT_CRLF
+	PRINT_CRLF
 
 	; Prompt for user input
-	LEA DX, STR_INPUT_NAME
-	MOV AH, 9
-	INT 21H
+	PRINT STR_INPUT_NAME
 	
 	; Receive user input
 	LEA DX, IN_NAME
@@ -172,15 +184,11 @@ TRY_NEXT_STUDENT:
 	JMP FOUND
 
 NOT_FOUND:
-	LEA DX, STR_NOT_FOUND
-	MOV AH, 9
-	INT 21H
+	PRINT STR_NOT_FOUND
 	JMP PROMPT			; Return to prompt
 	
 FOUND:
-	LEA DX, STR_FOUND
-	MOV AH, 9
-	INT 21H
+	PRINT STR_FOUND
 	
 	; When found, go to the next stage - getting grade!
 	JMP GET_GRADE
@@ -199,9 +207,7 @@ GET_GRADE:
 	ADD SI, 13			; Forward to the student's average
 	
 	; Print screen tip
-	LEA DX, STR_PRINT_GRADE
-	MOV AH, 9
-	INT 21H
+	PRINT STR_PRINT_GRADE
 	
 	; Now analyse and give a result
 	CMP BYTE PTR [SI], 90
@@ -248,9 +254,7 @@ END_GET_GRADE:
 	
 QUIT:	
 	; Print quit tip
-	LEA DX, STR_QUIT
-	MOV AH, 9
-	INT 21H
+	PRINT STR_QUIT
 	
 	; Exit program
 	MOV AH, 4CH
@@ -269,6 +273,8 @@ CALCULATE_AVERAGE PROC NEAR
 	;		
 	; STORAGE:
 	;		- POIN
+	
+	; NOTICE: I don't keep registers here, or my program will behave unexpectedly.
 	
 	; Get ready
 	; Get the heading address FOR MARKS of BUF
@@ -324,23 +330,6 @@ LOOP_FIND_STUDENT_MARKS:
 
 	RET
 CALCULATE_AVERAGE ENDP
-	
-	
-PRINT_CRLF PROC NEAR
-	; Dump register
-	PUSH AX
-	PUSH DX
-	
-	; Screen output: Go to a new line
-	LEA DX, CRLF
-	MOV AH, 9
-	INT 21H
-	
-	; Restore register
-	POP DX
-	POP AX
-	RET
-PRINT_CRLF ENDP
 	
 	
 CODE ENDS
