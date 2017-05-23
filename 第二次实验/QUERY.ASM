@@ -60,7 +60,7 @@ DATA SEGMENT USE16
 	IN_NAME	DB 11
 			DB ?
 			DB 11 DUP(0)
-	STUDENT_FOUND DB 0		; Mark if we found the student we want. Value: Found=1, Not found=0
+	;STUDENT_FOUND DB 0		; Mark if we found the student we want. Value: Found=1, Not found=0
 	POIN DW ?
 	
 DATA ENDS
